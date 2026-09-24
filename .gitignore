@@ -1,0 +1,20 @@
+# Donnees locales -- ne jamais pousser sur GitHub (contient l'historique des
+# relevés RONA, potentiellement des identifiants SMTP/webhook si tu actives
+# les alertes dans config.yaml).
+stock.db
+stock.db-journal
+config.yaml
+.env_cloud
+
+# Python
+__pycache__/
+*.pyc
+venv/
+.venv/
+
+# Exports generes
+exports_excel/
+*.xlsx
+
+# Divers
+.DS_Store

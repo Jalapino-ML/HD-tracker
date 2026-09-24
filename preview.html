@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Suivi de stock RONA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --zinc: #dee2e1; --tag: #f5f6f4; --ink: #16211f; --steel: #1f5d63;
+    --rust: #a3390e; --muted: #7c8785; --hairline: #c3c9c7;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--zinc); color: var(--ink);
+    font-family: "Archivo Narrow", "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.4;
+  }
+  .board { max-width: 1080px; margin: 0 auto; padding: 28px 18px 64px; }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 12px; }
+  h1 {
+    font-size: clamp(28px, 6vw, 46px); font-weight: 700; letter-spacing: -0.01em;
+    text-transform: uppercase; margin: 0;
+  }
+  .meta {
+    display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline;
+    font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px;
+    color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; margin-top: 8px;
+  }
+  .meta a { color: var(--steel); }
+  /* Bandeau de fraicheur: la donnee affichee a un age, et cet age est visible. */
+  .clockbar {
+    display: grid; gap: 1px; margin-top: 18px; background: var(--hairline);
+    grid-template-columns: repeat(auto-fit, minmax(148px, 1fr)); border: 1px solid var(--hairline);
+  }
+  .clockbar div { background: var(--tag); padding: 10px 12px; }
+  .clockbar dt {
+    font-family: "IBM Plex Mono", monospace; font-size: 10px; letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--muted); margin: 0 0 3px;
+  }
+  .clockbar dd {
+    margin: 0; font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 19px;
+  }
+  .group { margin-top: 34px; }
+  .group h2 { font-size: 19px; font-weight: 700; margin: 0 0 2px; }
+  .group .sku {
+    font-family: "IBM Plex Mono", monospace; font-size: 12px; color: var(--muted);
+    letter-spacing: 0.08em;
+  }
+  .tags {
+    display: grid; gap: 12px; margin-top: 14px;
+    grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+  }
+  .tag {
+    position: relative; background: var(--tag); border: 1px solid var(--hairline);
+    border-left: 4px solid var(--steel); padding: 34px 14px 14px;
+  }
+  .tag::before {
+    content: ""; position: absolute; top: 12px; left: 12px; width: 11px; height: 11px;
+    border-radius: 50%; background: var(--zinc); box-shadow: inset 0 0 0 1px var(--hairline);
+  }
+  .tag.low { border-left-color: var(--rust); }
+  .tag.out { border-left-color: var(--ink); background: #e9e6e2; }
+  .tag.unknown { border-left-color: var(--hairline); }
+  .tag .store {
+    position: absolute; top: 10px; left: 34px; font-size: 13px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+  .qty {
+    font-family: "IBM Plex Mono", monospace; font-weight: 600; font-size: 44px;
+    line-height: 1; letter-spacing: -0.03em;
+  }
+  .tag.out .qty { color: var(--rust); }
+  .tag.unknown .qty { color: var(--muted); font-size: 30px; }
+  .unit, .note {
+    font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .note { font-family: "IBM Plex Mono", monospace; font-size: 11px; margin-top: 10px; text-transform: none; }
+  .delta { font-family: "IBM Plex Mono", monospace; font-size: 13px; margin-left: 8px; }
+  .delta.down { color: var(--rust); }
+  .delta.up { color: var(--steel); }
+  .spark { display: block; margin-top: 12px; }
+  .spark path { fill: none; stroke: var(--steel); stroke-width: 1.5; }
+  .tag.low .spark path, .tag.out .spark path { stroke: var(--rust); }
+  /* Journal: chaque changement est une ligne horodatee, la plus recente en haut. */
+  .feed { margin-top: 44px; border-top: 2px solid var(--ink); padding-top: 12px; }
+  .feed h2 { font-size: 19px; text-transform: uppercase; letter-spacing: 0.04em; margin: 0 0 10px; }
+  .feed ol { list-style: none; margin: 0; padding: 0; }
+  .feed li {
+    display: grid; grid-template-columns: 96px 1fr auto; gap: 10px; align-items: baseline;
+    padding: 7px 0; border-bottom: 1px solid var(--hairline);
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+  }
+  .feed .when { color: var(--muted); font-size: 11px; letter-spacing: 0.04em; }
+  .feed .what { font-family: "Archivo Narrow", sans-serif; font-size: 15px; }
+  .feed .move { font-weight: 600; white-space: nowrap; }
+  .feed li.decrease .move, .feed li.out .move { color: var(--rust); }
+  .feed li.restock .move, .feed li.increase .move { color: var(--steel); }
+  .empty {
+    border: 1px dashed var(--muted); padding: 22px; margin-top: 18px;
+    font-family: "IBM Plex Mono", monospace; font-size: 13px;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .tag { transition: border-left-width 120ms ease; }
+    .tag:hover { border-left-width: 8px; }
+  }
+</style>
+</head>
+<body>
+<div class="board">
+  <header>
+    <h1>Suivi de stock</h1>
+    <div class="meta">
+      <span>3 articles</span>
+      <span>42 changement(s) sur 24 h</span>
+      <a href="/export.csv">Telecharger le CSV</a>
+      <a href="/changes.csv">Journal des changements</a>
+    </div>
+  </header>
+
+  <dl class="clockbar">
+    <div>
+      <dt>Dernier releve</dt>
+      <dd data-age="0">0 s</dd>
+    </div>
+    <div>
+      <dt>Age declare par la source</dt>
+      <dd>58 min</dd>
+    </div>
+    <div>
+      <dt>Cadence mesuree</dt>
+      <dd>3.0 h</dd>
+    </div>
+    <div>
+      <dt>Cache du site</dt>
+      <dd>600 s</dd>
+    </div>
+  </dl>
+
+  
+  <section class="group">
+    <h2>Boitiers utilitaires acier 2 x 3 po, paquet de 6</h2>
+    <div class="sku">Article 93515000</div>
+    <div class="tags">
+      
+      <article class="tag ok">
+        <div class="store">St-Bruno</div>
+        <div>
+          <span class="qty">6</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,3.0 H3.3V10.4 H6.6V10.4 H9.9V11.2 H13.2V12.1 H16.5V19.5 H19.8V19.5 H23.1V19.5 H26.4V19.5 H29.7V21.1 H33.0V21.1 H36.3V28.5 H39.6V31.0 H42.9V31.0 H46.2V31.0 H49.5V31.0 H52.8V31.0 H56.1V14.5 H59.4V17.0 H62.7V17.8 H66.0V20.3 H69.3V20.3 H72.6V20.3 H75.9V20.3 H79.2V20.3 H82.5V25.2 H85.8V30.2 H89.1V30.2 H92.4V10.4 H95.7V10.4 H99.0V15.4 H102.3V15.4 H105.6V15.4 H108.9V15.4 H112.2V15.4 H115.5V17.0 H118.8V24.4 H122.1V26.1 H125.4V26.1 H128.7V26.1 H132.0V26.1"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 2</div>
+        <div>
+          <span class="qty">16</span>
+          
+          <span class="delta down">-2</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,3.0 H3.3V3.7 H6.6V5.9 H9.9V12.6 H13.2V12.6 H16.5V14.1 H19.8V16.3 H23.1V16.3 H26.4V16.3 H29.7V16.3 H33.0V18.5 H36.3V18.5 H39.6V18.5 H42.9V25.1 H46.2V25.1 H49.5V25.1 H52.8V25.1 H56.1V25.1 H59.4V26.6 H62.7V26.6 H66.0V26.6 H69.3V26.6 H72.6V26.6 H75.9V26.6 H79.2V28.8 H82.5V30.3 H85.8V31.0 H89.1V31.0 H92.4V8.9 H95.7V8.9 H99.0V8.9 H102.3V8.9 H105.6V8.9 H108.9V8.9 H112.2V15.5 H115.5V15.5 H118.8V15.5 H122.1V15.5 H125.4V16.3 H128.7V17.7 H132.0V19.2"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag out">
+        <div class="store">Magasin 3</div>
+        <div>
+          <span class="qty">0</span>
+          
+        </div>
+        <div class="unit">Rupture</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,10.2 H3.3V10.2 H6.6V12.3 H9.9V12.3 H13.2V12.3 H16.5V13.8 H19.8V13.8 H23.1V13.8 H26.4V18.1 H29.7V18.1 H33.0V18.1 H36.3V20.2 H39.6V20.2 H42.9V20.2 H46.2V26.7 H49.5V26.7 H52.8V26.7 H56.1V26.7 H59.4V26.7 H62.7V26.7 H66.0V3.0 H69.3V5.2 H72.6V5.2 H75.9V6.6 H79.2V6.6 H82.5V6.6 H85.8V10.9 H89.1V12.3 H92.4V14.5 H95.7V14.5 H99.0V20.9 H102.3V20.9 H105.6V20.9 H108.9V20.9 H112.2V21.7 H115.5V23.1 H118.8V23.1 H122.1V29.6 H125.4V29.6 H128.7V31.0 H132.0V31.0"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 4</div>
+        <div>
+          <span class="qty">29</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,17.0 H3.3V17.7 H6.6V24.4 H9.9V24.4 H13.2V24.4 H16.5V25.8 H19.8V25.8 H23.1V27.3 H26.4V27.3 H29.7V31.0 H33.0V3.0 H36.3V3.0 H39.6V3.0 H42.9V3.0 H46.2V3.0 H49.5V5.2 H52.8V7.4 H56.1V11.8 H59.4V11.8 H62.7V11.8 H66.0V14.1 H69.3V16.3 H72.6V18.5 H75.9V20.7 H79.2V20.7 H82.5V21.4 H85.8V21.4 H89.1V21.4 H92.4V22.9 H95.7V22.9 H99.0V22.9 H102.3V29.5 H105.6V31.0 H108.9V31.0 H112.2V31.0 H115.5V9.6 H118.8V9.6 H122.1V9.6 H125.4V9.6 H128.7V9.6 H132.0V9.6"/>
+        </svg>
+        
+      </article>
+      
+    </div>
+  </section>
+  
+  <section class="group">
+    <h2>Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante)</h2>
+    <div class="sku">Article 93515001</div>
+    <div class="tags">
+      
+      <article class="tag ok">
+        <div class="store">St-Bruno</div>
+        <div>
+          <span class="qty">8</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,3.0 H3.3V4.3 H6.6V4.3 H9.9V4.3 H13.2V4.3 H16.5V5.6 H19.8V5.6 H23.1V5.6 H26.4V5.6 H29.7V5.6 H33.0V5.6 H36.3V5.6 H39.6V5.6 H42.9V6.3 H46.2V6.9 H49.5V6.9 H52.8V8.2 H56.1V14.1 H59.4V19.9 H62.7V19.9 H66.0V19.9 H69.3V20.6 H72.6V21.9 H75.9V22.5 H79.2V24.5 H82.5V25.8 H85.8V25.8 H89.1V29.7 H92.4V31.0 H95.7V31.0 H99.0V31.0 H102.3V31.0 H105.6V31.0 H108.9V10.8 H112.2V10.8 H115.5V16.7 H118.8V16.7 H122.1V18.6 H125.4V24.5 H128.7V25.8 H132.0V25.8"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag out">
+        <div class="store">Magasin 2</div>
+        <div>
+          <span class="qty">0</span>
+          
+          <span class="delta down">-2</span>
+          
+        </div>
+        <div class="unit">Rupture</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,3.0 H3.3V12.0 H6.6V15.0 H9.9V18.0 H13.2V18.0 H16.5V27.0 H19.8V28.0 H23.1V28.0 H26.4V28.0 H29.7V30.0 H33.0V30.0 H36.3V30.0 H39.6V31.0 H42.9V31.0 H46.2V31.0 H49.5V10.0 H52.8V11.0 H56.1V12.0 H59.4V13.0 H62.7V13.0 H66.0V13.0 H69.3V16.0 H72.6V18.0 H75.9V21.0 H79.2V21.0 H82.5V21.0 H85.8V27.0 H89.1V29.0 H92.4V31.0 H95.7V31.0 H99.0V4.0 H102.3V10.0 H105.6V10.0 H108.9V10.0 H112.2V19.0 H115.5V19.0 H118.8V19.0 H122.1V19.0 H125.4V28.0 H128.7V29.0 H132.0V31.0"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 3</div>
+        <div>
+          <span class="qty">20</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,5.0 H3.3V11.0 H6.6V11.0 H9.9V12.0 H13.2V13.0 H16.5V16.0 H19.8V22.0 H23.1V22.0 H26.4V28.0 H29.7V12.0 H33.0V12.0 H36.3V13.0 H39.6V16.0 H42.9V19.0 H46.2V28.0 H49.5V30.0 H52.8V30.0 H56.1V30.0 H59.4V30.0 H62.7V31.0 H66.0V3.0 H69.3V3.0 H72.6V3.0 H75.9V4.0 H79.2V4.0 H82.5V10.0 H85.8V10.0 H89.1V16.0 H92.4V18.0 H95.7V18.0 H99.0V18.0 H102.3V18.0 H105.6V21.0 H108.9V21.0 H112.2V23.0 H115.5V11.0 H118.8V11.0 H122.1V11.0 H125.4V11.0 H128.7V11.0 H132.0V11.0"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag low">
+        <div class="store">Magasin 4</div>
+        <div>
+          <span class="qty">3</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,17.4 H3.3V25.1 H6.6V25.1 H9.9V27.6 H13.2V31.0 H16.5V10.6 H19.8V10.6 H23.1V10.6 H26.4V13.2 H29.7V14.0 H33.0V14.0 H36.3V19.1 H39.6V19.1 H42.9V21.7 H46.2V21.7 H49.5V29.3 H52.8V30.2 H56.1V30.2 H59.4V31.0 H62.7V31.0 H66.0V15.7 H69.3V15.7 H72.6V23.4 H75.9V25.9 H79.2V25.9 H82.5V27.6 H85.8V27.6 H89.1V31.0 H92.4V31.0 H95.7V31.0 H99.0V3.0 H102.3V10.6 H105.6V12.3 H108.9V20.0 H112.2V20.0 H115.5V25.1 H118.8V25.1 H122.1V27.6 H125.4V28.5 H128.7V28.5 H132.0V28.5"/>
+        </svg>
+        
+      </article>
+      
+    </div>
+  </section>
+  
+  <section class="group">
+    <h2>Boitier octogonal acier 4 po, paquet de 4</h2>
+    <div class="sku">Article 93515002</div>
+    <div class="tags">
+      
+      <article class="tag ok">
+        <div class="store">St-Bruno</div>
+        <div>
+          <span class="qty">14</span>
+          
+          <span class="delta down">-1</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,3.0 H3.3V7.5 H6.6V9.1 H9.9V9.1 H13.2V15.9 H16.5V15.9 H19.8V16.6 H23.1V21.2 H26.4V21.2 H29.7V23.4 H33.0V30.2 H36.3V31.0 H39.6V31.0 H42.9V13.6 H46.2V13.6 H49.5V15.9 H52.8V15.9 H56.1V15.9 H59.4V22.7 H62.7V22.7 H66.0V24.9 H69.3V25.7 H72.6V26.5 H75.9V31.0 H79.2V31.0 H82.5V31.0 H85.8V31.0 H89.1V15.1 H92.4V15.1 H95.7V15.1 H99.0V15.1 H102.3V16.6 H105.6V16.6 H108.9V16.6 H112.2V18.9 H115.5V18.9 H118.8V18.9 H122.1V18.9 H125.4V19.6 H128.7V19.6 H132.0V20.4"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 2</div>
+        <div>
+          <span class="qty">13</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,14.7 H3.3V17.0 H6.6V17.0 H9.9V17.0 H13.2V17.0 H16.5V17.0 H19.8V17.0 H23.1V24.0 H26.4V24.0 H29.7V24.0 H33.0V24.0 H36.3V24.0 H39.6V24.0 H42.9V26.3 H46.2V29.8 H49.5V29.8 H52.8V29.8 H56.1V29.8 H59.4V31.0 H62.7V31.0 H66.0V3.0 H69.3V3.0 H72.6V4.2 H75.9V6.5 H79.2V8.8 H82.5V8.8 H85.8V19.3 H89.1V29.8 H92.4V29.8 H95.7V8.8 H99.0V8.8 H102.3V8.8 H105.6V8.8 H108.9V12.3 H112.2V15.8 H115.5V15.8 H118.8V15.8 H122.1V15.8 H125.4V15.8 H128.7V15.8 H132.0V15.8"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 3</div>
+        <div>
+          <span class="qty">18</span>
+          
+          <span class="delta up">+18</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,9.7 H3.3V19.8 H6.6V19.8 H9.9V20.9 H13.2V20.9 H16.5V20.9 H19.8V20.9 H23.1V20.9 H26.4V20.9 H29.7V20.9 H33.0V20.9 H36.3V27.6 H39.6V28.8 H42.9V31.0 H46.2V31.0 H49.5V31.0 H52.8V31.0 H56.1V31.0 H59.4V31.0 H62.7V31.0 H66.0V31.0 H69.3V3.0 H72.6V4.1 H75.9V6.4 H79.2V6.4 H82.5V7.5 H85.8V7.5 H89.1V14.2 H92.4V14.2 H95.7V14.2 H99.0V14.2 H102.3V14.2 H105.6V14.2 H108.9V14.2 H112.2V14.2 H115.5V14.2 H118.8V14.2 H122.1V20.9 H125.4V27.6 H128.7V31.0 H132.0V10.8"/>
+        </svg>
+        
+      </article>
+      
+      <article class="tag ok">
+        <div class="store">Magasin 4</div>
+        <div>
+          <span class="qty">28</span>
+          
+        </div>
+        <div class="unit">En stock</div>
+        
+        <svg class="spark" viewBox="0 0 132 34"
+             width="100%" height="34" role="img"
+             aria-label="Historique de 41 releves">
+          <path d="M0,22.4 H3.3V22.4 H6.6V29.4 H9.9V29.4 H13.2V29.4 H16.5V29.4 H19.8V14.7 H23.1V14.7 H26.4V15.4 H29.7V20.1 H33.0V20.1 H36.3V24.8 H39.6V24.8 H42.9V26.3 H46.2V26.3 H49.5V26.3 H52.8V26.3 H56.1V26.3 H59.4V26.3 H62.7V26.3 H66.0V26.3 H69.3V26.3 H72.6V26.3 H75.9V26.3 H79.2V28.7 H82.5V28.7 H85.8V28.7 H89.1V28.7 H92.4V31.0 H95.7V3.0 H99.0V3.8 H102.3V4.6 H105.6V4.6 H108.9V6.1 H112.2V6.1 H115.5V6.1 H118.8V7.7 H122.1V7.7 H125.4V7.7 H128.7V9.2 H132.0V9.2"/>
+        </svg>
+        
+      </article>
+      
+    </div>
+  </section>
+  
+
+  <section class="feed">
+    <h2>Journal des changements</h2>
+    
+    <ol>
+      
+      <li class="restock">
+        <span class="when">13 Aug 18:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 3</span>
+        <span class="move">0 → 18 (+18)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 18:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · St-Bruno</span>
+        <span class="move">15 → 14 (-1)</span>
+      </li>
+      
+      <li class="out">
+        <span class="when">13 Aug 18:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 2</span>
+        <span class="move">2 → 0 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 18:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · Magasin 2</span>
+        <span class="move">18 → 16 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 4</span>
+        <span class="move">30 → 28 (-2)</span>
+      </li>
+      
+      <li class="out">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 3</span>
+        <span class="move">3 → 0 (-3)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 2</span>
+        <span class="move">3 → 2 (-1)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · St-Bruno</span>
+        <span class="move">10 → 8 (-2)</span>
+      </li>
+      
+      <li class="out">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · Magasin 3</span>
+        <span class="move">2 → 0 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 15:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · Magasin 2</span>
+        <span class="move">20 → 18 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 3</span>
+        <span class="move">9 → 3 (-6)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · St-Bruno</span>
+        <span class="move">16 → 15 (-1)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 4</span>
+        <span class="move">4 → 3 (-1)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 2</span>
+        <span class="move">12 → 3 (-9)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · St-Bruno</span>
+        <span class="move">19 → 10 (-9)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 12:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · Magasin 2</span>
+        <span class="move">21 → 20 (-1)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 09:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 3</span>
+        <span class="move">15 → 9 (-6)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 09:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 4</span>
+        <span class="move">7 → 4 (-3)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 09:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · St-Bruno</span>
+        <span class="move">22 → 19 (-3)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 09:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · Magasin 3</span>
+        <span class="move">11 → 2 (-9)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 09:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · St-Bruno</span>
+        <span class="move">8 → 6 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 06:58</span>
+        <span class="what">Boitier octogonal acier 4 po, paquet de 4 · Magasin 4</span>
+        <span class="move">32 → 30 (-2)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 06:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 · St-Bruno</span>
+        <span class="move">17 → 8 (-9)</span>
+      </li>
+      
+      <li class="decrease">
+        <span class="when">13 Aug 03:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 4</span>
+        <span class="move">13 → 7 (-6)</span>
+      </li>
+      
+      <li class="increase">
+        <span class="when">13 Aug 03:58</span>
+        <span class="what">Boitiers utilitaires acier 2 x 3 po, paquet de 6 (variante) · Magasin 3</span>
+        <span class="move">8 → 20 (+12)</span>
+      </li>
+      
+    </ol>
+    
+  </section>
+</div>
+
+<script>
+  // Le compteur d'age avance seul, et la page se recharge des qu'un changement entre en base.
+  const seen = 216;
+  const stamp = document.querySelector('[data-age]');
+  let age = stamp && stamp.dataset.age ? parseInt(stamp.dataset.age, 10) : null;
+
+  function label(seconds) {
+    if (seconds < 60) return seconds + ' s';
+    if (seconds < 5400) return Math.floor(seconds / 60) + ' min';
+    if (seconds < 172800) return Math.floor(seconds / 3600) + ' h';
+    return Math.floor(seconds / 86400) + ' j';
+  }
+
+  if (age !== null) {
+    setInterval(() => { age += 1; stamp.textContent = label(age); }, 1000);
+  }
+
+  setInterval(async () => {
+    try {
+      const state = await (await fetch('/api/state')).json();
+      if (state.last_change_id !== seen) location.reload();
+    } catch (e) { /* collecteur arrete ou hors ligne, on reessaie au prochain tour */ }
+  }, 15000);
+</script>
+</body>
+</html>

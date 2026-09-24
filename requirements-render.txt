@@ -1,0 +1,12 @@
+# Dependances pour le DEPLOIEMENT CLOUD (Render) seulement.
+# Volontairement plus court que requirements.txt (utilise sur le Mac): pas
+# besoin de Playwright/playwright-stealth ici, puisque la copie cloud ne
+# pilote jamais de navigateur -- elle affiche seulement les donnees que
+# sync_to_cloud.py y a copiees depuis le Mac. Ca garde le build Render
+# rapide et leger (important sur le tier gratuit: 512 Mo RAM).
+
+Flask>=3.0
+gunicorn>=21.2
+PyYAML>=6.0
+openpyxl>=3.1
+psycopg2-binary>=2.9

@@ -1,0 +1,18 @@
+# Blueprint Render -- permet de deployer en un clic via "New +" -> "Blueprint"
+# dans le tableau de bord Render, en pointant sur ce depot GitHub.
+# Voir DEPLOIEMENT_CLOUD.md pour les etapes completes.
+
+services:
+  - type: web
+    name: rona-tracker
+    runtime: python
+    plan: free
+    buildCommand: "pip install -r requirements-render.txt"
+    startCommand: "gunicorn dashboard:app"
+    envVars:
+      - key: DATABASE_URL
+        sync: false   # colle l'URL Postgres (Neon) manuellement dans le tableau de bord Render
+      - key: API_WRITE_TOKEN
+        sync: false   # jeton protegeant POST /api/readings -- colle la valeur generee (voir chat)
+      - key: PYTHON_VERSION
+        value: 3.11.9

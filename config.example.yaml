@@ -1,0 +1,53 @@
+# Copiez ce fichier en config.yaml.
+#
+# Les produits et les magasins surveilles NE sont PLUS ici: ils vivent dans
+# stock.db (SQLite, dans ce dossier) et se gerent depuis le tableau de bord
+# (python dashboard.py -> http://127.0.0.1:8765) avec la barre "coller une
+# URL" et le panneau "Magasins surveilles". Ce fichier ne garde que le
+# reglage du rythme de verification et des alertes.
+
+# Ordonnancement adaptatif utilise par le superviseur integre au tableau de
+# bord (et par watch.py si vous preferez la version sans interface web).
+schedule:
+  active_start: "07:00"        # debut de la fenetre de surveillance rapprochee
+  active_end: "21:00"
+  interval_active: 1800        # secondes entre les passages pendant la fenetre active
+  interval_quiet: 7200         # la nuit
+  interval_after_change: 600   # juste apres un changement, on reste plus attentif
+  floor: 600                   # jamais plus vite que ca (chaque passage ouvre un navigateur)
+  backoff_factor: 1.5          # ralentissement progressif quand rien ne bouge
+  respect_cache: true          # ne jamais sonder plus vite que le max-age du site
+  headless: true                # false = fenetre Chromium visible (utile si RONA bloque le mode invisible)
+  # browser_channel: pilote un vrai navigateur installe sur la machine au lieu
+  # du Chromium "de test" fourni par Playwright. Mettez "msedge" pour essayer
+  # avec Microsoft Edge (doit etre installe), ou laissez vide pour le
+  # Chromium par defaut.
+  # browser_channel: "msedge"
+
+alerts:
+  on_any_change: true      # alerte des qu'une quantite bouge, sans delai d'attente
+  low_threshold: 4         # alerte quand la quantite tombe a ce niveau ou moins
+  drop_threshold: 10       # alerte quand la quantite chute de ce nombre entre deux relevés
+  notify_on_restock: true  # alerte quand un article repasse de 0 a disponible
+  cooldown_hours: 12       # ne pas repeter la meme alerte avant ce delai
+
+  email:
+    enabled: false
+    smtp_host: "smtp.gmail.com"
+    smtp_port: 587
+    username: "vous@exemple.com"
+    password: "mot-de-passe-application"
+    sender: "vous@exemple.com"
+    recipients:
+      - "vous@exemple.com"
+      # Pour un SMS, ajoutez l'adresse passerelle de votre fournisseur,
+      # par exemple 5145551234@txt.bell.ca
+
+  # Notification poussee sur telephone: le chemin le plus rapide.
+  # ntfy.sh est gratuit et sans compte: installez l'application, choisissez un nom
+  # de sujet difficile a deviner, et mettez https://ntfy.sh/votre-sujet-secret ici.
+  webhook:
+    enabled: false
+    url: "https://ntfy.sh/REMPLACER"
+    format: ntfy           # ntfy | slack | discord | json
+    priority: default      # ntfy: min, low, default, high, urgent
