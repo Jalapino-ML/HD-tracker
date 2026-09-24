@@ -513,6 +513,10 @@ TEMPLATE = """<!doctype html>
   @media (max-width: 560px) {
     .group { flex-direction: column-reverse; }
     .groupimg { width: 84px; }
+    .tags { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (min-width: 561px) and (max-width: 900px) {
+    .tags { grid-template-columns: repeat(3, 1fr); }
   }
   .star {
     background: none; border: none; cursor: pointer; font-size: 18px; vertical-align: middle;
@@ -522,7 +526,7 @@ TEMPLATE = """<!doctype html>
   .group.starred h2::before { content: "★ "; color: var(--gold); }
   .tags {
     display: grid; gap: 12px; margin-top: 14px;
-    grid-template-columns: repeat(auto-fit, minmax(196px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
   }
   .tag {
     position: relative; background: var(--tag); border: 1px solid var(--hairline);
