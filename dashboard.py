@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tableau de bord local: python dashboard.py puis http://127.0.0.1:8765
+"""Tableau de bord local: python dashboard.py puis http://127.0.0.1:8766
 
 Fait aussi office de superviseur: au demarrage, un thread d'arriere-plan
 verifie le stock a intervalle regulier (voir la section `schedule` de
@@ -1496,7 +1496,7 @@ if __name__ == "__main__":
     # verifications automatisees par navigateur. Suivi 100% manuel desormais
     # (verifier sur rona.ca, puis inserer via un script -- voir README).
     seed_product_images()
-    PORT = 8765
+    PORT = 8766
     # host="0.0.0.0" = ecoute sur toutes les interfaces reseau (pas juste
     # 127.0.0.1/localhost), donc accessible depuis le Wi-Fi local ou via
     # Tailscale, pas seulement depuis ce Mac.
