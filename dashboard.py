@@ -1452,8 +1452,10 @@ def start_scheduler():
 # automatiquement au demarrage (idempotent, ne touche que ces 3 SKUs) --
 # aucun script separe a executer.
 SEED_IMAGES_BY_SKU = {
-    # Vide pour Suivi HD -- ajoutez ici sku -> URL d'image au besoin,
-    # ex: "123456": "https://images.homedepot.ca/.../123456.jpg"
+    "1001975381": "https://images.homedepot.ca/productimages/p_1001975381.jpg?product-images=l",
+    "1001974422": "https://images.homedepot.ca/productimages/p_1001974422.jpg?product-images=l",
+    "1001974440": "https://images.homedepot.ca/productimages/p_1001974440.jpg?product-images=l",
+    "1001974442": "https://images.homedepot.ca/productimages/p_1001974442.jpg?product-images=l",
 }
 
 
