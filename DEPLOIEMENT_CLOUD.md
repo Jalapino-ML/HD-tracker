@@ -1,4 +1,4 @@
-# Héberger le tableau de bord RONA dans le cloud (gratuit)
+# Héberger le tableau de bord Suivi HD dans le cloud (gratuit)
 
 Ce guide déploie une **copie en lecture** du tableau de bord sur Render,
 accessible depuis n'importe où (même sans Tailscale), avec ses données dans
@@ -14,7 +14,7 @@ fois.
 
 1. Va sur **https://neon.tech** et crée un compte gratuit (bouton "Sign up" —
    GitHub, Google ou courriel).
-2. Une fois connecté, crée un nouveau projet (nom suggéré: `rona-tracker`).
+2. Une fois connecté, crée un nouveau projet (nom suggéré: `suivi-hd`).
    Neon crée automatiquement une base de données.
 3. Sur la page du projet, trouve le bouton **"Connection string"** (ou
    "Connect") — copie l'URL qui commence par `postgresql://...`. Elle
@@ -29,14 +29,12 @@ fois.
 Dans le Terminal, sur le Mac:
 
 ```bash
-cd ~/Documents/AI-Folder/Rona-Tracker
-git init
-git add .
-git commit -m "Rona Tracker"
+cd ~/Documents/AI-Folder/Suivi-HD
+# (deja fait: git init/commit)
 ```
 
 Puis sur **https://github.com**, crée un compte si tu n'en as pas, puis un
-nouveau dépôt (bouton vert "New") — nom suggéré `rona-tracker`, visibilité
+nouveau dépôt (bouton vert "New") — nom suggéré `suivi-hd`, visibilité
 **Private** recommandée (le code n'a rien de secret, mais autant rester
 prudent). Ne coche AUCUNE case (pas de README/gitignore/licence — le dépôt
 doit être vide).
@@ -44,7 +42,7 @@ doit être vide).
 GitHub affiche ensuite des commandes à coller — ce sera quelque chose comme:
 
 ```bash
-git remote add origin https://github.com/TON-NOM/rona-tracker.git
+git remote add origin https://github.com/TON-NOM/suivi-hd.git
 git branch -M main
 git push -u origin main
 ```
@@ -60,15 +58,15 @@ navigateur — suis simplement les instructions à l'écran.)
 1. Va sur **https://render.com**, crée un compte gratuit (le plus simple:
    "Sign up with GitHub" — ça connecte les deux d'un coup).
 2. Dans le tableau de bord Render, clique **"New +"** → **"Blueprint"**.
-3. Choisis ton dépôt `rona-tracker` (autorise Render à y accéder si demandé).
+3. Choisis ton dépôt `suivi-hd` (autorise Render à y accéder si demandé).
    Render détecte automatiquement `render.yaml` et propose de créer un
-   service web nommé `rona-tracker`.
+   service web nommé `suivi-hd`.
 4. Avant de confirmer, Render demande la valeur de `DATABASE_URL` (marquée
    `sync: false` dans `render.yaml`, donc à coller manuellement) — colle
    l'URL Postgres copiée à l'étape 1.
 5. Clique **"Apply"** / **"Create"**. Le premier build prend 2-3 minutes.
 6. Une fois déployé, Render affiche une URL du genre
-   `https://rona-tracker.onrender.com` — c'est ton tableau de bord,
+   `https://suivi-hd.onrender.com` — c'est ton tableau de bord,
    accessible de partout, sur PC, téléphone ou tablette, sans Tailscale.
 
 Note: sur le plan gratuit, le service s'endort après ~15 minutes sans
@@ -81,7 +79,7 @@ Une fois Neon et Render en place, envoie les données actuelles de
 `stock.db` vers Postgres. Sur le Mac:
 
 ```bash
-cd ~/Documents/AI-Folder/Rona-Tracker
+cd ~/Documents/AI-Folder/Suivi-HD
 source venv/bin/activate
 pip install psycopg2-binary
 export DATABASE_URL="postgresql://...."   # la meme URL collee dans Render
@@ -93,7 +91,7 @@ ligne `DATABASE_URL=postgresql://...`) à côté des scripts pour ne plus
 avoir à la retaper — `sync_to_cloud.py` la lit automatiquement s'il existe
 (ce fichier est aussi exclu de GitHub par `.gitignore`).
 
-Recharge `https://rona-tracker.onrender.com` — les données doivent
+Recharge `https://suivi-hd.onrender.com` — les données doivent
 apparaître.
 
 ## Après ça: le flux de mise à jour normal

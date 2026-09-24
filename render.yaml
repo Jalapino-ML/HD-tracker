@@ -4,7 +4,7 @@
 
 services:
   - type: web
-    name: rona-tracker
+    name: suivi-hd
     runtime: python
     plan: free
     buildCommand: "pip install -r requirements-render.txt"
