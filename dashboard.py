@@ -335,7 +335,10 @@ def build_view():
             skey = db.store_key(store)
             current = db.latest(conn, pkey, skey)
             previous = db.latest(conn, pkey, skey, offset=1)
-            points = db.history(conn, pkey, skey, limit=48)
+            # Historique complet depuis le premier releve: sert aux totaux
+            # (vendu / variation nette). Le mini-graphique garde les 48 derniers.
+            all_points = db.history(conn, pkey, skey, limit=1000000)
+            points = all_points[-48:]
             points_detail = db.history_detail(conn, pkey, skey, limit=200)
             qty = current["quantity"] if current else None
             before = previous["quantity"] if previous else None
@@ -360,8 +363,8 @@ def build_view():
                 "state": state,
                 "readings": len(points),
                 "spark": sparkline(points),
-                "sales": sales_summary(points),
-                "net": net_change(points),
+                "sales": sales_summary(all_points),
+                "net": net_change(all_points),
                 "history": cell_history(points_detail),
                 "checked_age": db.age_seconds((current or {}).get("taken_at")),
                 "note": (current or {}).get("note") if current and not current.get("ok", 1) else None,
